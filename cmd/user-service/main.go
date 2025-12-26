@@ -3,10 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
 )
 
 type User struct {
@@ -15,7 +18,22 @@ type User struct {
 }
 
 func main() {
-	dsn := "postgres://mockpay:mockpay@localhost:5433/mockpay?sslmode=disable"
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using system environment variables")
+	}
+
+	port := os.Getenv("USERS_SERVICE_PORT")
+	if port == "" {
+		port = "8081"
+	}
+
+	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		os.Getenv("POSTGRES_USER"),
+		os.Getenv("POSTGRES_PASSWORD"),
+		os.Getenv("POSTGRES_HOST"),
+		os.Getenv("POSTGRES_PORT"),
+		os.Getenv("POSTGRES_DB"),
+	)
 
 	db, err := pgxpool.New(context.Background(), dsn)
 	if err != nil {
@@ -52,6 +70,6 @@ func main() {
 		w.WriteHeader(http.StatusCreated)
 	})
 
-	log.Println("Users service started on :8081")
-	log.Fatal(http.ListenAndServe(":8081", nil))
+	log.Printf("Users service started on :%s\n", port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
